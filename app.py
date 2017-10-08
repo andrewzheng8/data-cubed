@@ -1,17 +1,19 @@
 from flask import Flask
 from flask import request
 from flask import send_file
-import requests
 from flask import json
+import requests
 import copy
+
+from boto.s3.connection import S3Connection
+
+s3 = S3Connection(os.environ['GMAPS_KEY'], os.environ['GIPHY_KEY'])
 
 app = Flask(__name__)
 
-google_places_key = 'AIzaSyA5Fh7YneQ_XE0yZkSyM4s6E3v2RjpHoCI'
-giphy_key = '34ykMUvkDjZNy1UjNhTdUMmpxmvgX9GE'
 
-google_places_api_request = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
-giphy_endpoint = 'https://api.giphy.com/v1/gifs/search'
+GMAPS_API = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
+GIPHY_API = 'https://api.giphy.com/v1/gifs/search'
 
 @app.route('/', methods=['POST'])
 def getPlacesAndGifs():
@@ -22,23 +24,23 @@ def getPlacesAndGifs():
         try:
             query = request_json['query']
         except KeyError:
-            return 'Json Object must have a key called query'
+            return 'Request body json must have a key called query'
         if not isinstance(query, basestring):
-            return 'Json Object query value must be of type string'
+            return 'query key in the request body json must point to a value of type string'
 
         buildJsonFile(query)
-        return send_file('send.json', mimetype='application/json', as_attachment=True)
+        return send_file('send.json', mimetype='application/json')
 
     return 'Hello World! How are you even at this point\n'
 
 def getPlaces(query):
-    payload = {'key':google_places_key, 'query':query}
-    gmaps_response = requests.get(google_places_api_request, params=payload)
+    payload = {'key':GMAPS_KEY, 'query':query}
+    gmaps_response = requests.get(GMAPS_API, params=payload)
     return gmaps_response.json()['results']
 
 def getGiphies(gmapsObj):
-    giphy_payload = {'api_key': giphy_key, 'q': gmapsObj['name']}
-    giphy_response = requests.get(giphy_endpoint, params= giphy_payload)
+    giphy_payload = {'api_key': GIPHY_KEY, 'q': gmapsObj['name']}
+    giphy_response = requests.get(GIPHY_API, params= giphy_payload)
     giphy_results = giphy_response.json()['data']
     return giphy_results
 
@@ -57,4 +59,4 @@ def buildJsonFile(query):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=True)
+    app.run()
